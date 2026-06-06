@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a1628">
+<title>مساعد التسوق الذكي 🛒</title>
+<link rel="manifest" href="#" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: linear-gradient(160deg,#0a1628 0%,#0d2137 40%,#0a2e1a 100%); min-height: 100vh; font-family: 'Tajawal', sans-serif; color: #e8f5e9; }
+input, select, textarea { color: #e8f5e9 !important; font-family: 'Tajawal', sans-serif; }
+input::placeholder, textarea::placeholder { color: #546e7a !important; }
+select option { background: #0d2137; color: #e8f5e9; }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(0,230,118,0.3); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const FAMILY_TYPES = [
+  { id:"single", label:"شخص واحد", emoji:"🧑", members:1 },
+  { id:"couple", label:"زوجان", emoji:"👫", members:2 },
+  { id:"small", label:"عائلة صغيرة (3-4)", emoji:"👨‍👩‍👦", members:3 },
+  { id:"medium", label:"عائلة متوسطة (5-6)", emoji:"👨‍👩‍👧‍👦", members:5 },
+  { id:"large", label:"عائلة كبيرة (+7)", emoji:"👨‍👩‍👧‍👦👶", members:7 },
+];
+const DIET_TYPES = [
+  { id:"normal", label:"عادي", emoji:"🍽️" },
+  { id:"economic", label:"اقتصادي", emoji:"💰" },
+  { id:"healthy", label:"صحي", emoji:"🥗" },
+  { id:"varied", label:"متنوع", emoji:"🌈" },
+];
+const CITIES = ["الرباط","الدار البيضاء","مراكش","فاس","طنجة","أكادير","مكناس","وجدة"];
+const CATEGORIES = ["خضر","فواكه","لحوم","أسماك","حبوب","مشروبات","منظفات","توابل","مواد جافة","نظافة شخصية","معلبات","ألبان","مخبوزات","أخرى"];
+const UNITS = ["كغ","غ","لتر","مل","حبة","علبة","كيس","رول","قطعة","علبة صغيرة"];
+const CAT_COLORS = {"خضر":"#4CAF50","فواكه":"#FF9800","لحوم":"#F44336","أسماك":"#2196F3","حبوب":"#795548","مشروبات":"#00BCD4","منظفات":"#9C27B0","توابل":"#FF5722","مواد جافة":"#8D6E63","نظافة شخصية":"#E91E63","معلبات":"#607D8B","ألبان":"#FFF176","مخبوزات":"#FFCC02","أخرى":"#607D8B"};
+const CAT_EMOJIS = {"خضر":"🥬","فواكه":"🍊","لحوم":"🥩","أسماك":"🐟","حبوب":"🌾","مشروبات":"🧃","منظفات":"🧹","توابل":"🌶️","مواد جافة":"🫙","نظافة شخصية":"🧴","معلبات":"🥫","ألبان":"🥛","مخبوزات":"🍞","أخرى":"🛒"};
+
+const s = {
+  card:{ background:"rgba(255,255,255,0.05)", backdropFilter:"blur(16px)", borderRadius:"20px", border:"1px solid rgba(0,230,118,0.15)", padding:"24px" },
+  title:{ color:"#00e676", fontSize:"16px", fontWeight:"bold", margin:"0 0 16px", paddingBottom:"12px", borderBottom:"1px solid rgba(0,230,118,0.15)" },
+  label:{ display:"block", color:"#80cbc4", marginBottom:"8px", fontSize:"14px", fontWeight:"600" },
+  input:{ width:"100%", padding:"12px 16px", borderRadius:"12px", border:"1px solid rgba(0,230,118,0.25)", background:"rgba(0,0,0,0.3)", color:"#e8f5e9", fontSize:"15px", outline:"none", fontFamily:"Tajawal,sans-serif", boxSizing:"border-box" },
+  mini:{ width:"100%", padding:"8px 10px", borderRadius:"8px", border:"1px solid rgba(0,230,118,0.25)", background:"rgba(0,0,0,0.3)", color:"#e8f5e9", fontSize:"13px", outline:"none", fontFamily:"Tajawal,sans-serif", boxSizing:"border-box" },
+  btnP:{ width:"100%", padding:"14px", borderRadius:"14px", border:"none", background:"linear-gradient(135deg,#00e676,#00bcd4)", color:"#0a1628", fontSize:"15px", fontWeight:"bold", cursor:"pointer", fontFamily:"Tajawal,sans-serif" },
+  btnS:{ padding:"12px", borderRadius:"12px", border:"1px solid rgba(0,230,118,0.3)", background:"rgba(0,230,118,0.08)", color:"#80cbc4", fontSize:"14px", cursor:"pointer", fontFamily:"Tajawal,sans-serif" },
+  addBtn:{ width:"100%", padding:"10px", borderRadius:"10px", border:"2px dashed rgba(0,230,118,0.4)", background:"transparent", color:"#00e676", cursor:"pointer", fontSize:"14px", fontFamily:"Tajawal,sans-serif" },
+};
+
+function ItemRow({ item, onEdit, onDelete }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", padding:"10px 12px", background:"rgba(255,255,255,0.04)", borderRadius:"10px", borderRight:`3px solid ${CAT_COLORS[item.category]||"#607D8B"}`, gap:"8px" }}>
+      <span style={{ fontSize:"18px" }}>{CAT_EMOJIS[item.category]||"🛒"}</span>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ color:"#e8f5e9", fontWeight:"600", fontSize:"14px" }}>{item.name}</div>
+        <div style={{ color:"#80cbc4", fontSize:"12px" }}>{item.quantity} {item.unit}</div>
+      </div>
+      <div style={{ color:"#00e676", fontWeight:"bold", fontSize:"15px", whiteSpace:"nowrap" }}>{item.price} د</div>
+      <button onClick={onEdit} style={{ background:"rgba(0,188,212,0.15)", border:"none", borderRadius:"8px", padding:"6px 10px", color:"#00bcd4", cursor:"pointer", fontSize:"16px" }}>✏️</button>
+      <button onClick={onDelete} style={{ background:"rgba(244,67,54,0.15)", border:"none", borderRadius:"8px", padding:"6px 10px", color:"#ef5350", cursor:"pointer", fontSize:"16px" }}>🗑️</button>
+    </div>
+  );
+}
+
+function EditForm({ item, setItem, onSave, onCancel }) {
+  return (
+    <div style={{ background:"rgba(0,188,212,0.08)", borderRadius:"12px", padding:"14px", border:"1px solid rgba(0,188,212,0.3)" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", marginBottom:"8px" }}>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الاسم</div><input value={item.name||""} onChange={e=>setItem({...item,name:e.target.value})} style={s.mini}/></div>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>السعر (د)</div><input type="number" value={item.price||""} onChange={e=>setItem({...item,price:e.target.value})} style={s.mini}/></div>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الكمية</div><input value={item.quantity||""} onChange={e=>setItem({...item,quantity:e.target.value})} style={s.mini}/></div>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الوحدة</div><select value={item.unit||"كغ"} onChange={e=>setItem({...item,unit:e.target.value})} style={s.mini}>{UNITS.map(u=><option key={u}>{u}</option>)}</select></div>
+      </div>
+      <div style={{ marginBottom:"10px" }}><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الفئة</div><select value={item.category||"أخرى"} onChange={e=>setItem({...item,category:e.target.value})} style={{...s.mini,width:"100%"}}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+      <div style={{ display:"flex", gap:"8px" }}>
+        <button onClick={onSave} style={{ flex:1, padding:"8px", borderRadius:"8px", border:"none", background:"linear-gradient(135deg,#00e676,#00bcd4)", color:"#0a1628", fontWeight:"bold", cursor:"pointer", fontFamily:"Tajawal,sans-serif" }}>✅ حفظ</button>
+        <button onClick={onCancel} style={{ flex:1, padding:"8px", borderRadius:"8px", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"#80cbc4", cursor:"pointer", fontFamily:"Tajawal,sans-serif" }}>إلغاء</button>
+      </div>
+    </div>
+  );
+}
+
+function AddForm({ item, setItem, onAdd, onCancel }) {
+  return (
+    <div style={{ background:"rgba(0,230,118,0.06)", borderRadius:"12px", padding:"14px", border:"1px dashed rgba(0,230,118,0.3)", marginTop:"12px" }}>
+      <div style={{ color:"#00e676", fontWeight:"bold", marginBottom:"10px", fontSize:"14px" }}>➕ إضافة منتج جديد</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px", marginBottom:"8px" }}>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الاسم *</div><input value={item.name} onChange={e=>setItem({...item,name:e.target.value})} placeholder="مثال: طماطم" style={s.mini}/></div>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>السعر (د) *</div><input type="number" value={item.price} onChange={e=>setItem({...item,price:e.target.value})} placeholder="0" style={s.mini}/></div>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الكمية</div><input value={item.quantity} onChange={e=>setItem({...item,quantity:e.target.value})} placeholder="1" style={s.mini}/></div>
+        <div><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الوحدة</div><select value={item.unit} onChange={e=>setItem({...item,unit:e.target.value})} style={s.mini}>{UNITS.map(u=><option key={u}>{u}</option>)}</select></div>
+      </div>
+      <div style={{ marginBottom:"10px" }}><div style={{ color:"#80cbc4", fontSize:"11px", marginBottom:"4px" }}>الفئة</div><select value={item.category} onChange={e=>setItem({...item,category:e.target.value})} style={{...s.mini,width:"100%"}}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+      <div style={{ display:"flex", gap:"8px" }}>
+        <button onClick={onAdd} style={{ flex:1, padding:"8px", borderRadius:"8px", border:"none", background:"linear-gradient(135deg,#00e676,#00bcd4)", color:"#0a1628", fontWeight:"bold", cursor:"pointer", fontFamily:"Tajawal,sans-serif" }}>+ إضافة</button>
+        <button onClick={onCancel} style={{ flex:1, padding:"8px", borderRadius:"8px", border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"#80cbc4", cursor:"pointer", fontFamily:"Tajawal,sans-serif" }}>إلغاء</button>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({ budget:"", family:"small", diet:"normal", city:"الرباط", preferences:"" });
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("weekly");
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [showAddForm, setShowAddForm] = useState(null);
+  const [newItem, setNewItem] = useState({ name:"", quantity:"", unit:"كغ", price:"", category:"أخرى" });
+  const [saved, setSaved] = useState(false);
+
+  const calcTotal = items => items.reduce((s,i) => s + Number(i.price||0), 0);
+  const deleteItem = (lt, idx) => setResult(p => ({...p,[lt]:p[lt].filter((_,i)=>i!==idx)}));
+  const startEdit = (lt, idx, item) => { setEditingItem({lt,idx}); setEditForm({...item}); };
+  const saveEdit = () => { const{lt,idx}=editingItem; setResult(p=>({...p,[lt]:p[lt].map((item,i)=>i===idx?{...editForm,price:Number(editForm.price)}:item)})); setEditingItem(null); };
+  const addNewItem = lt => { if(!newItem.name||!newItem.price) return; setResult(p=>({...p,[lt]:[...p[lt],{...newItem,price:Number(newItem.price)}]})); setNewItem({name:"",quantity:"",unit:"كغ",price:"",category:"أخرى"}); setShowAddForm(null); };
+
+  const saveList = () => {
+    const fi = FAMILY_TYPES.find(f=>f.id===form.family);
+    let t = "=============================\n  برنامج التسوق الذكي - المغرب\n=============================\n";
+    t += `المدينة: ${form.city}\nالميزانية: ${form.budget} درهم\nالعائلة: ${fi?.label}\n\n`;
+    if(result.budget_analysis){ t+=`--- الميزانية ---\nشهري: ${result.budget_analysis.total} د\nأسبوعي: ${result.budget_analysis.weekly} د\nيومي للفرد: ${result.budget_analysis.daily_per_person} د\n\n`; }
+    if(result.weekly_items?.length){ t+=`--- قائمة التسوق الأسبوعية (${calcTotal(result.weekly_items)} د) ---\n`; result.weekly_items.forEach(i=>{t+=`• ${i.name} — ${i.quantity} ${i.unit} — ${i.price} د\n`;}); t+="\n"; }
+    if(result.monthly_essentials?.length){ t+=`--- المواد الأساسية الشهرية (${calcTotal(result.monthly_essentials)} د) ---\n`; result.monthly_essentials.forEach(i=>{t+=`• ${i.name} — ${i.quantity} ${i.unit} — ${i.price} د\n`;}); t+="\n"; }
+    if(result.saving_tips?.length){ t+="--- نصائح التوفير ---\n"; result.saving_tips.forEach((tip,i)=>{t+=`${i+1}. ${tip}\n`;}); }
+    try {
+      const blob = new Blob([t],{type:"text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download=`تسوق-${form.city}.txt`; a.click(); URL.revokeObjectURL(url);
+      setSaved(true); setTimeout(()=>setSaved(false),3000);
+    } catch(e) { navigator.clipboard?.writeText(t).then(()=>{setSaved(true);setTimeout(()=>setSaved(false),3000);}); }
+  };
+
+  const handleGenerate = async () => {
+    setLoading(true); setError(null); setResult(null);
+    const fi = FAMILY_TYPES.find(f=>f.id===form.family);
+    const di = DIET_TYPES.find(d=>d.id===form.diet);
+    const sys = `أنت مساعد تسوق متخصص في السوق المغربي. أجب بـ JSON فقط بدون أي نص أو backticks.
+JSON المطلوب: {"summary":"نص","budget_analysis":{"total":0,"weekly":0,"daily_per_person":0,"savings_tip":"نص"},"weekly_items":[{"name":"نص","quantity":"نص","unit":"نص","price":0,"category":"خضر"}],"monthly_essentials":[{"name":"نص","quantity":"نص","unit":"نص","price":0,"category":"نص"}],"saving_tips":["نص"],"market_tips":["نص"],"best_shopping_days":"نص","price_alerts":[{"item":"نص","cheaper_alternative":"نص"}]}
+قواعد: weekly_items 12-15 منتج طازج. monthly_essentials 20-25 منتج يشمل: شاي أتاي، قهوة، سكر، دقيق، زيت، توابل، معلبات، منظفات، مواد نظافة شخصية. أسعار واقعية بالدرهم. المجموع لا يتجاوز الميزانية.`;
+    const usr = `ميزانية: ${form.budget} درهم/شهر، ${fi.members} أشخاص (${fi.label})، تغذية ${di.label}، مدينة ${form.city}${form.preferences?`، تفضيلات: ${form.preferences}`:""}.`;
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":window.ANTHROPIC_API_KEY||"","anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:8000,system:sys,messages:[{role:"user",content:usr}]})
+      });
+      const data = await res.json();
+      if(!res.ok){setError("خطأ: "+(data?.error?.message||res.status));setLoading(false);return;}
+      const text = data.content.map(i=>i.text||"").join("");
+      setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
+      setStep(3);
+    } catch(e){ setError("حدث خطأ، حاول مجدداً"); }
+    setLoading(false);
+  };
+
+  const resetApp = () => { setStep(1); setResult(null); setForm({budget:"",family:"small",diet:"normal",city:"الرباط",preferences:""}); };
+
+  return (
+    <div dir="rtl" style={{ minHeight:"100vh", padding:"0 0 40px" }}>
+      {/* Header */}
+      <div style={{ background:"linear-gradient(135deg,rgba(0,180,80,0.15),rgba(0,120,255,0.1))", borderBottom:"1px solid rgba(0,200,100,0.2)", padding:"28px 20px 20px", textAlign:"center" }}>
+        <div style={{ fontSize:"44px", marginBottom:"6px" }}>🛒</div>
+        <h1 style={{ fontSize:"clamp(20px,5vw,34px)", fontWeight:"900", background:"linear-gradient(90deg,#00e676,#69f0ae,#00bcd4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginBottom:"4px" }}>مساعد التسوق الذكي</h1>
+        <p style={{ color:"#80cbc4", fontSize:"13px" }}>برنامج تسوقك الأسبوعي والشهري حسب ميزانيتك 🇲🇦</p>
+        {step < 3 && (
+          <div style={{ display:"flex", justifyContent:"center", gap:"8px", marginTop:"16px" }}>
+            {[1,2].map(n=>(
+              <div key={n} style={{ width:"34px", height:"34px", borderRadius:"50%", background:step>=n?"linear-gradient(135deg,#00e676,#00bcd4)":"rgba(255,255,255,0.1)", color:step>=n?"#0a1628":"#80cbc4", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:"bold", fontSize:"14px", border:step===n?"2px solid #00e676":"2px solid transparent" }}>{n}</div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px" }}>
+
+        {/* STEP 1 */}
+        {step===1 && (
+          <div style={s.card}>
+            <h2 style={s.title}>💰 ميزانيتك وعائلتك</h2>
+            <label style={s.label}>الميزانية الشهرية (درهم)</label>
+            <input type="number" value={form.budget} onChange={e=>setForm({...form,budget:e.target.value})} placeholder="مثال: 3000" style={s.input}/>
+            <label style={{...s.label,marginTop:"18px"}}>المدينة</label>
+            <select value={form.city} onChange={e=>setForm({...form,city:e.target.value})} style={s.input}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+            <label style={{...s.label,marginTop:"18px"}}>حجم العائلة</label>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"20px" }}>
+              {FAMILY_TYPES.map(f=>(
+                <button key={f.id} onClick={()=>setForm({...form,family:f.id})} style={{ padding:"12px", borderRadius:"12px", border:form.family===f.id?"2px solid #00e676":"2px solid rgba(255,255,255,0.1)", background:form.family===f.id?"rgba(0,230,118,0.15)":"rgba(255,255,255,0.05)", color:form.family===f.id?"#00e676":"#b2dfdb", cursor:"pointer", fontSize:"13px", textAlign:"center", fontFamily:"Tajawal,sans-serif" }}>
+                  <div style={{ fontSize:"22px" }}>{f.emoji}</div><div>{f.label}</div>
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setStep(2)} disabled={!form.budget} style={{...s.btnP,opacity:!form.budget?0.5:1}}>التالي ←</button>
+          </div>
+        )}
+
+        {/* STEP 2 */}
+        {step===2 && (
+          <div style={s.card}>
+            <h2 style={s.title}>🥗 نوع التغذية والتفضيلات</h2>
+            <label style={s.label}>نوع التغذية</label>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"18px" }}>
+              {DIET_TYPES.map(d=>(
+                <button key={d.id} onClick={()=>setForm({...form,diet:d.id})} style={{ padding:"14px 10px", borderRadius:"12px", border:form.diet===d.id?"2px solid #00e676":"2px solid rgba(255,255,255,0.1)", background:form.diet===d.id?"rgba(0,230,118,0.15)":"rgba(255,255,255,0.05)", color:form.diet===d.id?"#00e676":"#b2dfdb", cursor:"pointer", fontSize:"14px", fontFamily:"Tajawal,sans-serif", textAlign:"center" }}>
+                  <div style={{ fontSize:"24px", marginBottom:"4px" }}>{d.emoji}</div><div>{d.label}</div>
+                </button>
+              ))}
+            </div>
+            <label style={s.label}>تفضيلات خاصة (اختياري)</label>
+            <textarea value={form.preferences} onChange={e=>setForm({...form,preferences:e.target.value})} placeholder="مثال: نتجنب اللحم الأحمر، نحب الخضر الموسمية..." style={{...s.input,height:"75px",resize:"none"}}/>
+            <div style={{ display:"flex", gap:"10px", marginTop:"20px" }}>
+              <button onClick={()=>setStep(1)} style={{...s.btnS,flex:1}}>→ رجوع</button>
+              <button onClick={handleGenerate} disabled={loading} style={{...s.btnP,flex:2,opacity:loading?0.7:1}}>{loading?"⏳ جاري التحليل...":"🛒 احصل على برنامج التسوق"}</button>
+            </div>
+            {error && <p style={{ color:"#ff5252", textAlign:"center", marginTop:"10px", fontSize:"13px" }}>{error}</p>}
+          </div>
+        )}
+
+        {/* LOADING */}
+        {loading && (
+          <div style={{ textAlign:"center", padding:"60px 20px" }}>
+            <div style={{ fontSize:"48px", marginBottom:"14px", display:"inline-block", animation:"spin 1s linear infinite" }}>🛒</div>
+            <p style={{ color:"#80cbc4", fontSize:"15px" }}>جاري تحليل ميزانيتك وإعداد برنامج التسوق...</p>
+            <p style={{ color:"#546e7a", fontSize:"12px", marginTop:"6px" }}>قد يستغرق هذا بضع ثوانٍ</p>
+          </div>
+        )}
+
+        {/* RESULTS */}
+        {step===3 && result && (
+          <div>
+            {/* Summary */}
+            <div style={{...s.card, background:"linear-gradient(135deg,rgba(0,230,118,0.12),rgba(0,188,212,0.08))", borderColor:"rgba(0,230,118,0.3)", marginBottom:"14px"}}>
+              <div style={{ textAlign:"center", marginBottom:"14px" }}>
+                <div style={{ fontSize:"32px" }}>✅</div>
+                <p style={{ color:"#b2dfdb", marginTop:"8px", lineHeight:1.7, fontSize:"14px" }}>{result.summary}</p>
+              </div>
+              {result.budget_analysis && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"8px" }}>
+                  {[["شهري",result.budget_analysis.total,"#00e676"],["أسبوعي",result.budget_analysis.weekly,"#00bcd4"],["يومي/فرد",result.budget_analysis.daily_per_person,"#ffb74d"]].map(([l,v,c])=>(
+                    <div key={l} style={{ background:"rgba(0,0,0,0.3)", borderRadius:"10px", padding:"10px", textAlign:"center" }}>
+                      <div style={{ color:c, fontWeight:"bold", fontSize:"16px" }}>{v} د</div>
+                      <div style={{ color:"#80cbc4", fontSize:"11px", marginTop:"3px" }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {result.budget_analysis?.savings_tip && (
+                <div style={{ marginTop:"10px", padding:"10px 12px", background:"rgba(255,183,77,0.1)", borderRadius:"10px", border:"1px solid rgba(255,183,77,0.3)", color:"#ffcc80", fontSize:"13px" }}>💡 {result.budget_analysis.savings_tip}</div>
+              )}
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display:"flex", gap:"8px", marginBottom:"14px", overflowX:"auto", paddingBottom:"2px" }}>
+              {[["weekly","📅 الأسبوعي"],["monthly","📦 الأساسيات"],["tips","💡 النصائح"]].map(([id,label])=>(
+                <button key={id} onClick={()=>setActiveTab(id)} style={{ padding:"9px 16px", borderRadius:"20px", border:activeTab===id?"2px solid #00e676":"2px solid rgba(255,255,255,0.1)", background:activeTab===id?"rgba(0,230,118,0.2)":"rgba(255,255,255,0.05)", color:activeTab===id?"#00e676":"#80cbc4", cursor:"pointer", fontSize:"13px", whiteSpace:"nowrap", fontWeight:activeTab===id?"bold":"normal", fontFamily:"Tajawal,sans-serif" }}>{label}</button>
+              ))}
+            </div>
+
+            {/* Weekly */}
+            {activeTab==="weekly" && result.weekly_items && (
+              <div style={s.card}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"14px" }}>
+                  <h3 style={{ margin:0, color:"#00e676", fontSize:"15px" }}>📅 قائمة التسوق الأسبوعية</h3>
+                  <span style={{ background:"rgba(0,230,118,0.2)", color:"#00e676", padding:"3px 10px", borderRadius:"20px", fontSize:"13px", fontWeight:"bold" }}>{calcTotal(result.weekly_items)} د</span>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+                  {result.weekly_items.map((item,ii)=>(
+                    <div key={ii}>
+                      {editingItem?.lt==="weekly_items"&&editingItem?.idx===ii
+                        ? <EditForm item={editForm} setItem={setEditForm} onSave={saveEdit} onCancel={()=>setEditingItem(null)}/>
+                        : <ItemRow item={item} onEdit={()=>startEdit("weekly_items",ii,item)} onDelete={()=>deleteItem("weekly_items",ii)}/>}
+                    </div>
+                  ))}
+                </div>
+                {showAddForm==="weekly"
+                  ? <AddForm item={newItem} setItem={setNewItem} onAdd={()=>addNewItem("weekly_items")} onCancel={()=>setShowAddForm(null)}/>
+                  : <button onClick={()=>setShowAddForm("weekly")} style={{...s.addBtn,marginTop:"12px"}}>+ إضافة منتج</button>}
+              </div>
+            )}
+
+            {/* Monthly */}
+            {activeTab==="monthly" && result.monthly_essentials && (
+              <div style={s.card}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"14px" }}>
+                  <h3 style={{ margin:0, color:"#00e676", fontSize:"15px" }}>📦 المواد الأساسية الشهرية</h3>
+                  <span style={{ background:"rgba(0,230,118,0.2)", color:"#00e676", padding:"3px 10px", borderRadius:"20px", fontSize:"13px", fontWeight:"bold" }}>{calcTotal(result.monthly_essentials)} د</span>
+                </div>
+                <div style={{ borderBottom:"1px solid rgba(0,230,118,0.15)", marginBottom:"14px" }}/>
+                <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+                  {result.monthly_essentials.map((item,i)=>(
+                    <div key={i}>
+                      {editingItem?.lt==="monthly_essentials"&&editingItem?.idx===i
+                        ? <EditForm item={editForm} setItem={setEditForm} onSave={saveEdit} onCancel={()=>setEditingItem(null)}/>
+                        : <ItemRow item={item} onEdit={()=>startEdit("monthly_essentials",i,item)} onDelete={()=>deleteItem("monthly_essentials",i)}/>}
+                    </div>
+                  ))}
+                </div>
+                {showAddForm==="monthly"
+                  ? <AddForm item={newItem} setItem={setNewItem} onAdd={()=>addNewItem("monthly_essentials")} onCancel={()=>setShowAddForm(null)}/>
+                  : <button onClick={()=>setShowAddForm("monthly")} style={{...s.addBtn,marginTop:"12px"}}>+ إضافة مادة</button>}
+                {result.best_shopping_days && <div style={{ marginTop:"14px", padding:"10px 14px", background:"rgba(0,188,212,0.1)", borderRadius:"10px", border:"1px solid rgba(0,188,212,0.3)", color:"#80deea", fontSize:"13px" }}>🗓️ <strong>أفضل أيام التسوق:</strong> {result.best_shopping_days}</div>}
+              </div>
+            )}
+
+            {/* Tips */}
+            {activeTab==="tips" && (
+              <div>
+                {result.saving_tips && (
+                  <div style={{...s.card,marginBottom:"14px"}}>
+                    <h3 style={s.title}>💡 نصائح توفير الميزانية</h3>
+                    {result.saving_tips.map((tip,i)=>(
+                      <div key={i} style={{ display:"flex", gap:"10px", alignItems:"flex-start", padding:"10px 0", borderBottom:i<result.saving_tips.length-1?"1px solid rgba(255,255,255,0.06)":"none" }}>
+                        <span style={{ background:"rgba(0,230,118,0.2)", color:"#00e676", borderRadius:"50%", width:"24px", height:"24px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"bold", flexShrink:0 }}>{i+1}</span>
+                        <span style={{ color:"#b2dfdb", lineHeight:1.7, fontSize:"13px" }}>{tip}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {result.market_tips && (
+                  <div style={{...s.card,marginBottom:"14px"}}>
+                    <h3 style={s.title}>🏪 نصائح السوق</h3>
+                    {result.market_tips.map((tip,i)=>(
+                      <div key={i} style={{ display:"flex", gap:"8px", padding:"10px 0", borderBottom:i<result.market_tips.length-1?"1px solid rgba(255,255,255,0.06)":"none" }}>
+                        <span style={{ color:"#ffb74d", flexShrink:0 }}>🏷️</span>
+                        <span style={{ color:"#b2dfdb", lineHeight:1.7, fontSize:"13px" }}>{tip}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {result.price_alerts?.length>0 && (
+                  <div style={s.card}>
+                    <h3 style={s.title}>📊 بدائل أرخص</h3>
+                    {result.price_alerts.map((alert,i)=>(
+                      <div key={i} style={{ padding:"10px", background:"rgba(255,152,0,0.08)", borderRadius:"10px", marginBottom:"8px", border:"1px solid rgba(255,152,0,0.2)" }}>
+                        <div style={{ color:"#ffb74d", fontWeight:"bold", marginBottom:"4px" }}>🔔 {alert.item}</div>
+                        <div style={{ color:"#a5d6a7", fontSize:"13px" }}>البديل الأرخص: {alert.cheaper_alternative}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div style={{ display:"flex", gap:"10px", marginTop:"14px" }}>
+              <button onClick={resetApp} style={{...s.btnS,flex:1}}>🔄 برنامج جديد</button>
+              <button onClick={saveList} style={{...s.btnP,flex:1,padding:"12px",background:saved?"linear-gradient(135deg,#00c853,#00897b)":"linear-gradient(135deg,#00e676,#00bcd4)"}}>
+                {saved?"✅ تم الحفظ!":"💾 حفظ القائمة"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
